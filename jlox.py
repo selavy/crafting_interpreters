@@ -70,6 +70,25 @@ class Token(object):
         return self.__str__()
 
 
+KEYWORDS = {
+        'and': TokenType.AND,
+        'class': TokenType.CLASS,
+        'else': TokenType.ELSE,
+        'false': TokenType.FALSE,
+        'for': TokenType.FOR,
+        'fun': TokenType.FUN,
+        'if': TokenType.IF,
+        'nil': TokenType.NIL,
+        'or': TokenType.OR,
+        'print': TokenType.PRINT,
+        'return': TokenType.RETURN,
+        'super': TokenType.SUPER,
+        'this': TokenType.THIS,
+        'true': TokenType.TRUE,
+        'var':  TokenType.VAR,
+        'while': TokenType.WHILE,
+}
+
 # REVISIT: this is a class in the text, re-eval if this needs to 
 # be a class or that is just Java dumb-ness
 def scan_tokens(source):
@@ -146,7 +165,7 @@ def scan_tokens(source):
                     advance()
             else:
                 add_token(TokenType.SLASH)
-        elif c == (' ', '\r', '\t'):
+        elif c in (' ', '\r', '\t'):
             continue
         elif c == '\n':
             line += 1
@@ -175,6 +194,15 @@ def scan_tokens(source):
                 while peek().isdigit():
                     advance()
             add_token(TokenType.NUMBER, float(source[start:current]))
+        elif c.isalpha():
+            while peek().isalnum():
+                advance()
+            text = source[start:current]
+            try:
+                ttype = KEYWORDS[text]
+            except KeyError:
+                ttype = TokenType.IDENTIFIER
+            add_token(ttype)
         else:
             # XXX: text uses global for marking an error, exception seems
             # more natural at this point
