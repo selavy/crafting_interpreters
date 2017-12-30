@@ -18,7 +18,7 @@ class TokenType(Enum):
     PLUS = auto()
     SEMICOLON = auto()
     SLASH = auto()
-    START = auto()
+    STAR = auto()
 
     # One or two character tokens
     BANG = auto()
@@ -276,12 +276,23 @@ def run(line):
 
 
 if __name__ == '__main__':
-    lit1 = ast.Literal(value=1.)
-    lit2 = ast.Literal(value=2.)
-    op = Token(ttype=TokenType.PLUS, lexeme='+', literal=None, line=1)
+    # lit1 = ast.Literal(value=1.)
+    # lit2 = ast.Literal(value=2.)
+    # op = Token(ttype=TokenType.PLUS, lexeme='+', literal=None, line=1)
 
-    ast = ast.Binary(left=lit1, operator=op, right=lit2)
-    print(ASTPrinter().print_(ast))
+    # ast = ast.Binary(left=lit1, operator=op, right=lit2)
+    # print(ASTPrinter().print_(ast))
+
+    expr = ast.Binary(
+            ast.Unary(
+                Token(TokenType.MINUS, "-", None, 1),
+                ast.Literal(123)),
+            Token(TokenType.STAR, "*", None, 1),
+            ast.Grouping(ast.Literal(45.67))
+            )
+
+    print(ASTPrinter().print_(expr))
+
 
     # if len(sys.argv) > 2:
     #     print("Usage: jlox.py [script]")
