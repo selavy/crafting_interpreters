@@ -10,7 +10,7 @@ def gentype(f, node):
     f.write('class {klass}(object):\n'.format(klass=klass))
     args = ['self'] + members
     f.write('    def __init__({args}):\n'.format(
-        args=', '.join(members)))
+        args=', '.join(args)))
 
     for member in members:
         f.write('        self.{name} = {name}\n'.format(
@@ -19,7 +19,7 @@ def gentype(f, node):
     f.write('    def __str__(self):\n')
     f.write('        return "{klass}"\n'.format(klass=klass))
     f.write('\n')
-    f.write('    def visit(self, visitor):\n')
+    f.write('    def accept(self, visitor):\n')
     f.write('        return visitor.visit_{klass}(self)\n'.format(
         klass=klass.lower()))
     f.write('\n')

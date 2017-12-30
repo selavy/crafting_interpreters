@@ -92,10 +92,32 @@ class Token(object):
 
 
 class ASTPrinter(object):
-    def __init__(self, ast):
-        ast.accept(self)
+    def __init__(self):
+        pass
 
+    def print_(self, ast):
+        return ast.accept(self)
 
+    def parenthesize(self, name, *args):
+        results = [name]
+        for expr in args:
+            results.append(expr.accept(self))
+        return "({})".format(' '.join(results))
+
+    def visit_binary(self, expr):
+        return self.parenthesize(expr.operator.lexeme, expr.left, expr.right)
+
+    def visit_grouping(self, expr):
+        return self.parenthesize("group", expr.expression)
+
+    def visit_literal(self, expr):
+        if expr.value is None:
+            return "nil"
+        else:
+            return str(expr.value)
+
+    def visit_unary(self, expr):
+        return self.parenthesize(expr.operator.lexeme, expr.right)
 
 
 # REVISIT: this is a class in the text, re-eval if this needs to
@@ -254,11 +276,18 @@ def run(line):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 2:
-        print("Usage: jlox.py [script]")
-        sys.exit(0)
-    elif len(sys.argv) == 2:
-        run_program(sys.argv[0])
-    else:
-        run_prompt()
-    print("Bye.")
+    lit1 = ast.Literal(value=1.)
+    lit2 = ast.Literal(value=2.)
+    op = Token(ttype=TokenType.PLUS, lexeme='+', literal=None, line=1)
+
+    ast = ast.Binary(left=lit1, operator=op, right=lit2)
+    print(ASTPrinter().print_(ast))
+
+    # if len(sys.argv) > 2:
+    #     print("Usage: jlox.py [script]")
+    #     sys.exit(0)
+    # elif len(sys.argv) == 2:
+    #     run_program(sys.argv[0])
+    # else:
+    #     run_prompt()
+    # print("Bye.")
