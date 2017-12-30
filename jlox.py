@@ -3,6 +3,7 @@
 import sys
 import readline # noqa
 from enum import Enum, auto
+import ast
 
 
 class TokenType(Enum):
@@ -55,21 +56,6 @@ class TokenType(Enum):
     EOF = auto()
 
 
-class Token(object):
-    def __init__(self, ttype, lexeme, literal, line):
-        self.ttype = ttype
-        self.lexeme = str(lexeme)
-        self.literal = literal
-        self.line = int(line)
-
-    def __str__(self):
-        return '{ttype!s} {lexeme!s} {literal!s}'.format(
-                ttype=self.ttype, lexeme=self.lexeme, literal=self.literal)
-
-    def __repr__(self):
-        return self.__str__()
-
-
 KEYWORDS = {
         'and': TokenType.AND,
         'class': TokenType.CLASS,
@@ -89,7 +75,30 @@ KEYWORDS = {
         'while': TokenType.WHILE,
 }
 
-# REVISIT: this is a class in the text, re-eval if this needs to 
+
+class Token(object):
+    def __init__(self, ttype, lexeme, literal, line):
+        self.ttype = ttype
+        self.lexeme = str(lexeme)
+        self.literal = literal
+        self.line = int(line)
+
+    def __str__(self):
+        return '{ttype!s} {lexeme!s} {literal!s}'.format(
+                ttype=self.ttype, lexeme=self.lexeme, literal=self.literal)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ASTPrinter(object):
+    def __init__(self, ast):
+        ast.accept(self)
+
+
+
+
+# REVISIT: this is a class in the text, re-eval if this needs to
 # be a class or that is just Java dumb-ness
 def scan_tokens(source):
     tokens = []
