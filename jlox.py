@@ -530,8 +530,9 @@ def report(line, where, message):
 
 
 def run_program(prog):
-    # TODO: implement
-    pass
+    with open(prog, 'r') as f:
+        source = '\n'.join(f.readlines())
+    run(source)
 
 
 def run_prompt():
@@ -543,32 +544,20 @@ def run_prompt():
             break
 
 
-def run(line):
-    print("input: '{}'".format(line))
-    tokens = scan_tokens(line)
-    import pprint
-    pprint.pprint(tokens)
+def run(source):
+    tokens = scan_tokens(source)
+    parser = Parser(tokens)
+    stmts = parser.parse()
+    interp = Interpreter()
+    interp.interpret(stmts)
 
 
 if __name__ == '__main__':
-    import pprint
-    source = """
-    print "Hello world!";
-    print true;
-    print 2 + 1;
-    """
-    tokens = scan_tokens(source)
-    parser = Parser(tokens)
-    statements = parser.parse()
-    interp = Interpreter()
-    interp.interpret(statements)
-
-    # if len(sys.argv) > 2:
-    #     print("Usage: jlox.py [script]")
-    #     sys.exit(0)
-    # elif len(sys.argv) == 2:
-    #     run_program(sys.argv[0])
-    # else:
-    #     run_prompt()
-
+    if len(sys.argv) > 2:
+        print("Usage: jlox.py [script]")
+        sys.exit(0)
+    elif len(sys.argv) == 2:
+        run_program(sys.argv[0])
+    else:
+        run_prompt()
     print("Bye.")
