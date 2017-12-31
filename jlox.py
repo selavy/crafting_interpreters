@@ -120,6 +120,86 @@ class ASTPrinter(object):
         return self.parenthesize(expr.operator.lexeme, expr.right)
 
 
+class Interpreter(object):
+    def __init__(self):
+        pass
+
+    def evaluate(self, expr):
+        return expr.accept(self)
+
+    def visit_binary(self, expr):
+        left = self.evaluate(expr.left)
+        right = self.evaluate(expr.right)
+        op = expr.operator.ttype
+        if op == TokenType.MINUS:
+            result = float(left) - float(right)
+        elif op == TokenType.PLUS:
+            if isinstance(left, float) and isinstance(right, float):
+                result = float(left) + float(right)
+            elif isinstance(left, str) and isinstance(right, str):
+                result = str(left) + str(right)
+            else:
+                # XXX: raise error?
+                result = None
+        elif op == TokenType.SLASH:
+            result = float(left) / float(right)
+        elif op == TokenType.STAR:
+            result = float(left) * float(right)
+        elif op == TokenType.GREATER:
+            result = float(left) > float(right)
+        elif op == TokenType.GREATER_EQUAL:
+            result = float(left) >= float(right)
+        elif op == TokenType.LESS:
+            result = float(left) < float(right)
+        elif op == TokenType.LESS_EQUAL:
+            result = float(left) <= float(right)
+        elif op == TokenType.BANG_EQUAL:
+            result = not Interpreter.is_equal(left, right)
+        elif op == TokenType.EQUAL_EQUAL:
+            result = Interpreter.is_equal(left, right)
+        else:
+            # XXX: raise error?
+            result = None
+        return result
+
+    def visit_grouping(self, expr):
+        return self.evaluate(expr.expression)
+
+    def visit_literal(self, expr):
+        return expr.value
+
+    def visit_unary(self, expr):
+        right = self.evaluate(expr.right)
+        op = expr.operator.ttype
+        if op == TokenType.MINUS:
+            return -1. * float(right)
+        elif op == TokenType.BANG:
+            return not Interpreter.is_truthy(right)
+        else:
+            # XXX: should this raise an Exception?  Shouldn't ever happen
+            #      right?
+            return None
+
+    @staticmethod
+    def is_truthy(val):
+        if val is None:
+            return False
+        elif isinstance(val, bool):
+            return val
+        else:
+            # XXX: seems like numbers should return "val != 0."
+            return True
+
+    @staticmethod
+    def is_equal(left, right):
+        if left is None and right is None:
+            return True
+        elif left is None:
+            return False
+        else:
+            return left == right
+
+
 # REVISIT: this is a class in the text, re-eval if this needs to
 # be a class or that is just Java dumb-ness
 def scan_tokens(source):
@@ -243,6 +323,7 @@ def scan_tokens(source):
 
     tokens.append(Token(TokenType.EOF, '', None, line))
     return tokens
+
 
 class Parser(object):
     def __init__(self, tokens):
@@ -398,7 +479,8 @@ def run(line):
 
 if __name__ == '__main__':
     import pprint
-    source = "-1 + 2 + 3 * 4"
+    source = "!(-1 + (2 + 3) * 4 - 19)"
+    # source = "!nil"
     tokens = scan_tokens(source)
     print("TOKENS")
     pprint.pprint(tokens)
@@ -406,6 +488,10 @@ if __name__ == '__main__':
     expr = parser.parse()
     print("EXPRESSION")
     print(ASTPrinter().print_(expr))
+
+    interp = Interpreter()
+    print("INTERPRETED RESULT")
+    print(interp.evaluate(expr))
 
     # if len(sys.argv) > 2:
     #     print("Usage: jlox.py [script]")
