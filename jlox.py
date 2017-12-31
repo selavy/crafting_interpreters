@@ -397,33 +397,15 @@ def run(line):
 
 
 if __name__ == '__main__':
-    # lit1 = ast.Literal(value=1.)
-    # lit2 = ast.Literal(value=2.)
-    # op = Token(ttype=TokenType.PLUS, lexeme='+', literal=None, line=1)
-
-    # ast = ast.Binary(left=lit1, operator=op, right=lit2)
-    # print(ASTPrinter().print_(ast))
-
-    # expr = ast.Binary(
-    #         ast.Unary(
-    #             Token(TokenType.MINUS, "-", None, 1),
-    #             ast.Literal(123)),
-    #         Token(TokenType.STAR, "*", None, 1),
-    #         ast.Grouping(ast.Literal(45.67))
-    #         )
-
-
     import pprint
-    source = "1 + 2"
+    source = "-1 + 2 + 3 * 4"
     tokens = scan_tokens(source)
     print("TOKENS")
     pprint.pprint(tokens)
     parser = Parser(tokens)
     expr = parser.parse()
-
     print("EXPRESSION")
     print(ASTPrinter().print_(expr))
-
 
     # if len(sys.argv) > 2:
     #     print("Usage: jlox.py [script]")
