@@ -132,26 +132,34 @@ class Interpreter(object):
         right = self.evaluate(expr.right)
         op = expr.operator.ttype
         if op == TokenType.MINUS:
+            Interpreter.check_number_operands(op, left, right)
             result = float(left) - float(right)
         elif op == TokenType.PLUS:
             if isinstance(left, float) and isinstance(right, float):
+                Interpreter.check_number_operands(op, left, right)
                 result = float(left) + float(right)
             elif isinstance(left, str) and isinstance(right, str):
                 result = str(left) + str(right)
             else:
-                # XXX: raise error?
-                result = None
+                raise ValueError("Operands must be two numbers or two "
+                        "strings.")
         elif op == TokenType.SLASH:
+            Interpreter.check_number_operands(op, left, right)
             result = float(left) / float(right)
         elif op == TokenType.STAR:
+            Interpreter.check_number_operands(op, left, right)
             result = float(left) * float(right)
         elif op == TokenType.GREATER:
+            Interpreter.check_number_operands(op, left, right)
             result = float(left) > float(right)
         elif op == TokenType.GREATER_EQUAL:
+            Interpreter.check_number_operands(op, left, right)
             result = float(left) >= float(right)
         elif op == TokenType.LESS:
+            Interpreter.check_number_operands(op, left, right)
             result = float(left) < float(right)
         elif op == TokenType.LESS_EQUAL:
+            Interpreter.check_number_operands(op, left, right)
             result = float(left) <= float(right)
         elif op == TokenType.BANG_EQUAL:
             result = not Interpreter.is_equal(left, right)
@@ -172,6 +180,7 @@ class Interpreter(object):
         right = self.evaluate(expr.right)
         op = expr.operator.ttype
         if op == TokenType.MINUS:
+            Interpreter.check_number_operand(op, right)
             return -1. * float(right)
         elif op == TokenType.BANG:
             return not Interpreter.is_truthy(right)
@@ -198,6 +207,35 @@ class Interpreter(object):
             return False
         else:
             return left == right
+
+    @staticmethod
+    def check_number_operand(operator, operand):
+        if not isinstance(operand, float):
+            raise ValueError("Operand must be a number: {op!s}".format(
+                op=operator))
+
+    def check_number_operands(operator, left, right):
+        if not isinstance(left, float):
+            raise ValueError("Left operand must be a number: {op!s}".format(
+                operator))
+        elif not isinstance(right, float):
+            raise ValueError("Right operand must be a number: {op!s}".format(
+                operator))
+
+
+def lox_runtime_error(err):
+    # TODO: make exception class to hold line number
+    print(str(err))
+
+
+def interpret(expr):
+    try:
+        interp = Interpreter()
+        result = interp.evaluate(expr)
+        # XXX: doesn't seem like this function should be stateful...
+        print(str(result))
+    except Exception as e:
+        lox_runtime_error(e)
 
 
 # REVISIT: this is a class in the text, re-eval if this needs to
@@ -489,9 +527,10 @@ if __name__ == '__main__':
     print("EXPRESSION")
     print(ASTPrinter().print_(expr))
 
-    interp = Interpreter()
+    # interp = Interpreter()
     print("INTERPRETED RESULT")
-    print(interp.evaluate(expr))
+    # print(interp.evaluate(expr))
+    interpret(expr)
 
     # if len(sys.argv) > 2:
     #     print("Usage: jlox.py [script]")
