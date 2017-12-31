@@ -84,7 +84,7 @@ class Token(object):
         self.line = int(line)
 
     def __str__(self):
-        return '{ttype!s} {lexeme!s} {literal!s}'.format(
+        return '({ttype!s}, "{lexeme!s}", {literal!s})'.format(
                 ttype=self.ttype, lexeme=self.lexeme, literal=self.literal)
 
     def __repr__(self):
@@ -244,13 +244,134 @@ def scan_tokens(source):
     tokens.append(Token(TokenType.EOF, '', None, line))
     return tokens
 
+class Parser(object):
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.current = 0
 
-def error(line, message):
-    report(line, '', message)
+    def peek(self):
+        return self.tokens[self.current]
+
+    def check(self, ttype):
+        if self.peek().ttype == TokenType.EOF:
+            return False
+        else:
+            return self.peek().ttype == ttype
+
+    def match(self, *args):
+        for arg in args:
+            if self.check(arg):
+                self.advance()
+                return True
+        return False
+
+    def advance(self):
+        if self.peek().ttype != TokenType.EOF:
+            self.current += 1
+        return self.previous()
+
+    def previous(self):
+        return self.tokens[self.current - 1]
+
+    def expression(self):
+        return self.equality()
+
+    def equality(self):
+        expr = self.comparison()
+        while self.match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL):
+            operator = self.previous()
+            right = self.comparison()
+            expr = ast.Binary(expr, operator, right)
+        return expr
+
+    def comparison(self):
+        expr = self.addition()
+        while self.match(TokenType.GREATER, TokenType.GREATER_EQUAL,
+                TokenType.LESS, TokenType.LESS_EQUAL):
+            operator = self.previous()
+            right = addition()
+            expr = ast.Binary(expr, operator, right)
+        return expr
+
+    def addition(self):
+        expr = self.multiplication()
+        while self.match(TokenType.MINUS, TokenType.PLUS):
+            operator = self.previous()
+            right = self.multiplication()
+            expr = ast.Binary(expr, operator, right)
+        return expr
+
+    def multiplication(self):
+        expr = self.unary()
+        while self.match(TokenType.SLASH, TokenType.STAR):
+            operator = self.previous()
+            right = self.unary()
+            expr = ast.Binary(expr, operator, right)
+        return expr
+
+    def unary(self):
+        if self.match(TokenType.BANG, TokenType.MINUS):
+            operator = self.previous()
+            right = self.unary()
+            return ast.Unary(operator, right)
+        else:
+            return self.primary()
+
+    def primary(self):
+        if self.match(TokenType.FALSE):
+            return ast.Literal(False)
+        elif self.match(TokenType.TRUE):
+            return ast.Literal(True)
+        elif self.match(TokenType.NIL):
+            return ast.Literal(None)
+        elif self.match(TokenType.NUMBER, TokenType.STRING):
+            return ast.Literal(self.previous().literal)
+        elif self.match(TokenType.LEFT_PAREN):
+            expr = self.expression()
+            self.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression.")
+            return ast.Grouping(expr)
+        else:
+            self.error(self.peek(), "Expect expression.")
+
+    def consume(self, ttype, message):
+        if self.check(ttype):
+            return self.advance()
+        else:
+            self.error(self.peek(), message)
+
+    def error(self, token, message):
+        error(token, message)
+        raise Exception("Failed to parse")
+
+    def synchronize(self):
+        self.advance()
+        while self.peek().ttype != TokenType.EOF:
+            if self.previous().ttype == TokenType.SEMICOLON:
+                return
+            ttype = self.peek().ttype
+            if ttype in (TokenType.CLASS, TokenType.FUN, TokenType.VAR,
+                    TokenType.FOR, TokenType.IF, TokenType.WHILE,
+                    TokenType.PRINT, TokenType.RETURN):
+                break
+            self.advance()
+
+    def parse(self):
+        try:
+            return self.expression()
+        except Exception:
+            # return None
+            raise
+
+
+def error(token, message):
+    if token.ttype == TokenType.EOF:
+        report(token.line, " at end", message)
+    else:
+        report(token.line, " at '{}'".format(token.lexeme), message)
 
 
 def report(line, where, message):
-    sys.stdout.stderr("[line {}] Error{}: {}\n".format(
+    sys.stderr.write("[line {}] Error{}: {}\n".format(
         line, where, message))
 
 
@@ -283,14 +404,24 @@ if __name__ == '__main__':
     # ast = ast.Binary(left=lit1, operator=op, right=lit2)
     # print(ASTPrinter().print_(ast))
 
-    expr = ast.Binary(
-            ast.Unary(
-                Token(TokenType.MINUS, "-", None, 1),
-                ast.Literal(123)),
-            Token(TokenType.STAR, "*", None, 1),
-            ast.Grouping(ast.Literal(45.67))
-            )
+    # expr = ast.Binary(
+    #         ast.Unary(
+    #             Token(TokenType.MINUS, "-", None, 1),
+    #             ast.Literal(123)),
+    #         Token(TokenType.STAR, "*", None, 1),
+    #         ast.Grouping(ast.Literal(45.67))
+    #         )
 
+
+    import pprint
+    source = "1 + 2"
+    tokens = scan_tokens(source)
+    print("TOKENS")
+    pprint.pprint(tokens)
+    parser = Parser(tokens)
+    expr = parser.parse()
+
+    print("EXPRESSION")
     print(ASTPrinter().print_(expr))
 
 
@@ -301,4 +432,5 @@ if __name__ == '__main__':
     #     run_program(sys.argv[0])
     # else:
     #     run_prompt()
-    # print("Bye.")
+
+    print("Bye.")
