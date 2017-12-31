@@ -122,7 +122,27 @@ class ASTPrinter(object):
 
 class Interpreter(object):
     def __init__(self):
-        pass
+        self.had_error = False
+
+    def interpret(self, statements):
+        self.had_error = False
+        try:
+            for stmt in statements:
+                self.execute(stmt)
+        except Exception as e:
+            lox_runtime_error(e)
+
+    def execute(self, stmt):
+        stmt.accept(self)
+
+    def visit_expression(self, stmt):
+        self.evaluate(stmt.expression)
+        return None
+
+    def visit_print(self, stmt):
+        value = self.evaluate(stmt.expression)
+        print(str(value))
+        return None
 
     def evaluate(self, expr):
         return expr.accept(self)
@@ -231,7 +251,7 @@ def lox_runtime_error(err):
 def interpret(expr):
     try:
         interp = Interpreter()
-        result = interp.evaluate(expr)
+        ok, result = interp.run(expr)
         # XXX: doesn't seem like this function should be stateful...
         print(str(result))
     except Exception as e:
@@ -474,12 +494,27 @@ class Parser(object):
                 break
             self.advance()
 
+    def statement(self):
+        if self.match(TokenType.PRINT):
+            return self.print_statement()
+        else:
+            return self.expression_statement()
+
+    def print_statement(self):
+        value = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return ast.Print(value)
+
+    def expression_statement(self):
+        expr = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return ast.Expression(expr)
+
     def parse(self):
-        try:
-            return self.expression()
-        except Exception:
-            # return None
-            raise
+        statements = []
+        while self.peek().ttype != TokenType.EOF:
+            statements.append(self.statement())
+        return statements
 
 
 def error(token, message):
@@ -517,20 +552,16 @@ def run(line):
 
 if __name__ == '__main__':
     import pprint
-    source = "!(-1 + (2 + 3) * 4 - 19)"
-    # source = "!nil"
+    source = """
+    print "Hello world!";
+    print true;
+    print 2 + 1;
+    """
     tokens = scan_tokens(source)
-    print("TOKENS")
-    pprint.pprint(tokens)
     parser = Parser(tokens)
-    expr = parser.parse()
-    print("EXPRESSION")
-    print(ASTPrinter().print_(expr))
-
-    # interp = Interpreter()
-    print("INTERPRETED RESULT")
-    # print(interp.evaluate(expr))
-    interpret(expr)
+    statements = parser.parse()
+    interp = Interpreter()
+    interp.interpret(statements)
 
     # if len(sys.argv) > 2:
     #     print("Usage: jlox.py [script]")

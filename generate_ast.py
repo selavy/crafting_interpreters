@@ -27,10 +27,14 @@ def gentype(f, node):
 
 if __name__ == '__main__':
     nodes = (
+            # Expr
             ('Binary', ['left', 'operator', 'right']),
             ('Grouping', ['expression']),
             ('Literal', ['value']),
             ('Unary', ['operator', 'right']),
+            # Stmt
+            ('Expression', ['expression']),
+            ('Print', ['expression']),
     )
     for node in nodes:
         gentype(sys.stdout, node)

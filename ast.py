@@ -41,3 +41,23 @@ class Unary(object):
     def accept(self, visitor):
         return visitor.visit_unary(self)
 
+class Expression(object):
+    def __init__(self, expression):
+        self.expression = expression
+
+    def __str__(self):
+        return "Expression"
+
+    def accept(self, visitor):
+        return visitor.visit_expression(self)
+
+class Print(object):
+    def __init__(self, expression):
+        self.expression = expression
+
+    def __str__(self):
+        return "Print"
+
+    def accept(self, visitor):
+        return visitor.visit_print(self)
+
