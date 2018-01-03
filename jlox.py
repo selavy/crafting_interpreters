@@ -123,6 +123,7 @@ class ASTPrinter(object):
 class Interpreter(object):
     def __init__(self):
         self.had_error = False
+        self.environment = Environment()
 
     def interpret(self, statements):
         self.had_error = False
@@ -241,6 +242,16 @@ class Interpreter(object):
         elif not isinstance(right, float):
             raise ValueError("Right operand must be a number: {op!s}".format(
                 operator))
+
+    def visit_var(self, stmt):
+        value = None
+        if stmt.initializer is not None:
+            value = self.evaluate(stmt.initializer)
+        self.environment.define(stmt.name.lexeme, value)
+        return None
+
+    def visit_variable(self, expr):
+        return self.environment.get(expr.name)
 
 
 def lox_runtime_error(err):
@@ -383,6 +394,22 @@ def scan_tokens(source):
     return tokens
 
 
+# REVISIT(plesslie): does this really to be its own class?
+class Environment(object):
+    def __init__(self):
+        self.values = {}
+
+    def define(self, name, value):
+        self.values[name] = value
+
+    def get(self, name):
+        try:
+            return self.values[name.lexeme]
+        except KeyError as e:
+            raise RuntimeError("Undefined variable '{}'.".format(
+                name.lexeme))
+
+
 class Parser(object):
     def __init__(self, tokens):
         self.tokens = tokens
@@ -469,6 +496,8 @@ class Parser(object):
             expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression.")
             return ast.Grouping(expr)
+        elif self.match(TokenType.IDENTIFIER):
+            return ast.Variable(self.previous())
         else:
             self.error(self.peek(), "Expect expression.")
 
@@ -480,9 +509,13 @@ class Parser(object):
 
     def error(self, token, message):
         error(token, message)
+        # TODO(plesslie): make parsing error exception to wrap token
         raise Exception("Failed to parse")
 
     def synchronize(self):
+        # TEMP TEMP: if this gets called, I probably have a bug, so don't
+        # silently swallow errors
+        sys.stderr.write("WARNING SYNCHRONIZE CALLED\n")
         self.advance()
         while self.peek().ttype != TokenType.EOF:
             if self.previous().ttype == TokenType.SEMICOLON:
@@ -500,6 +533,24 @@ class Parser(object):
         else:
             return self.expression_statement()
 
+    def declaration(self):
+        try:
+            if self.match(TokenType.VAR):
+                return self.var_declaration()
+            else:
+                return self.statement()
+        except Exception:
+            self.synchronize()
+            return None
+
+    def var_declaration(self):
+        name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")
+        value = None
+        if self.match(TokenType.EQUAL):
+            value = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return ast.Var(name, value)
+
     def print_statement(self):
         value = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
@@ -513,7 +564,7 @@ class Parser(object):
     def parse(self):
         statements = []
         while self.peek().ttype != TokenType.EOF:
-            statements.append(self.statement())
+            statements.append(self.declaration())
         return statements
 
 
@@ -557,7 +608,7 @@ if __name__ == '__main__':
         print("Usage: jlox.py [script]")
         sys.exit(0)
     elif len(sys.argv) == 2:
-        run_program(sys.argv[0])
+        run_program(sys.argv[1])
     else:
         run_prompt()
     print("Bye.")
