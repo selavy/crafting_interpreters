@@ -41,6 +41,16 @@ class Unary(object):
     def accept(self, visitor):
         return visitor.visit_unary(self)
 
+class Variable(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return "Variable"
+
+    def accept(self, visitor):
+        return visitor.visit_variable(self)
+
 class Expression(object):
     def __init__(self, expression):
         self.expression = expression
@@ -60,4 +70,15 @@ class Print(object):
 
     def accept(self, visitor):
         return visitor.visit_print(self)
+
+class Var(object):
+    def __init__(self, name, initializer):
+        self.name = name
+        self.initializer = initializer
+
+    def __str__(self):
+        return "Var"
+
+    def accept(self, visitor):
+        return visitor.visit_var(self)
 

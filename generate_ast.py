@@ -32,9 +32,11 @@ if __name__ == '__main__':
             ('Grouping', ['expression']),
             ('Literal', ['value']),
             ('Unary', ['operator', 'right']),
+            ('Variable', ['name']),
             # Stmt
             ('Expression', ['expression']),
             ('Print', ['expression']),
+            ('Var', ['name', 'initializer']),
     )
     for node in nodes:
         gentype(sys.stdout, node)
