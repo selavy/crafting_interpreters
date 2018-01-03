@@ -91,35 +91,6 @@ class Token(object):
         return self.__str__()
 
 
-class ASTPrinter(object):
-    def __init__(self):
-        pass
-
-    def print_(self, ast):
-        return ast.accept(self)
-
-    def parenthesize(self, name, *args):
-        results = [name]
-        for expr in args:
-            results.append(expr.accept(self))
-        return "({})".format(' '.join(results))
-
-    def visit_binary(self, expr):
-        return self.parenthesize(expr.operator.lexeme, expr.left, expr.right)
-
-    def visit_grouping(self, expr):
-        return self.parenthesize("group", expr.expression)
-
-    def visit_literal(self, expr):
-        if expr.value is None:
-            return "nil"
-        else:
-            return str(expr.value)
-
-    def visit_unary(self, expr):
-        return self.parenthesize(expr.operator.lexeme, expr.right)
-
-
 class Interpreter(object):
     def __init__(self):
         self.had_error = False
@@ -209,6 +180,18 @@ class Interpreter(object):
             # XXX: should this raise an Exception?  Shouldn't ever happen
             #      right?
             return None
+
+    def visit_block(self, stmt):
+        self.execute_block(stmt.statements, Environment(self.environment))
+
+    def execute_block(self, statements, environment):
+        previous = self.environment
+        try:
+            self.environment = environment
+            for statement in statements:
+                self.execute(statement)
+        finally:
+            self.environment = previous
 
     @staticmethod
     def is_truthy(val):
@@ -401,8 +384,9 @@ def scan_tokens(source):
 
 # REVISIT(plesslie): does this really to be its own class?
 class Environment(object):
-    def __init__(self):
+    def __init__(self, enclosing=None):
         self.values = {}
+        self.enclosing = enclosing
 
     def define(self, name, value):
         self.values[name] = value
@@ -411,15 +395,21 @@ class Environment(object):
         try:
             return self.values[name.lexeme]
         except KeyError:
-            raise RuntimeError("Undefined variable '{}'.".format(
-                name.lexeme))
+            if self.enclosing is not None:
+                return self.enclosing.get(name)
+            else:
+                raise RuntimeError("Undefined variable '{}'.".format(
+                    name.lexeme))
 
     def assign(self, name, value):
         try:
             self.values[name.lexeme] = value
         except KeyError:
-            raise RuntimeError("Undefined variable '{}'.".format(
-                name.lexeme))
+            if self.enclosing is not None:
+                self.enclosing.assign(name, value)
+            else:
+                raise RuntimeError("Undefined variable '{}'.".format(
+                    name.lexeme))
 
 
 class Parser(object):
@@ -554,8 +544,20 @@ class Parser(object):
     def statement(self):
         if self.match(TokenType.PRINT):
             return self.print_statement()
+        elif self.match(TokenType.LEFT_BRACE):
+            return ast.Block(self.block())
         else:
             return self.expression_statement()
+
+    def is_end(self):
+        return self.peek().ttype == TokenType.EOF
+
+    def block(self):
+        statements = []
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
+            statements.append(self.declaration())
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        return statements
 
     def declaration(self):
         try:

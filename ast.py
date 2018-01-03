@@ -93,3 +93,13 @@ class Assign(object):
     def accept(self, visitor):
         return visitor.visit_assign(self)
 
+class Block(object):
+    def __init__(self, statements):
+        self.statements = statements
+
+    def __str__(self):
+        return "Block"
+
+    def accept(self, visitor):
+        return visitor.visit_block(self)
+
