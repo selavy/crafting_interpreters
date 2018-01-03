@@ -37,6 +37,7 @@ if __name__ == '__main__':
             ('Expression', ['expression']),
             ('Print', ['expression']),
             ('Var', ['name', 'initializer']),
+            ('Assign', ['name', 'value']),
     )
     for node in nodes:
         gentype(sys.stdout, node)

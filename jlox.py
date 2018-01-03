@@ -253,6 +253,11 @@ class Interpreter(object):
     def visit_variable(self, expr):
         return self.environment.get(expr.name)
 
+    def visit_assign(self, expr):
+        value = self.evaluate(expr.value)
+        self.environment.assign(expr.name, value)
+        return value
+
 
 def lox_runtime_error(err):
     # TODO: make exception class to hold line number
@@ -405,7 +410,14 @@ class Environment(object):
     def get(self, name):
         try:
             return self.values[name.lexeme]
-        except KeyError as e:
+        except KeyError:
+            raise RuntimeError("Undefined variable '{}'.".format(
+                name.lexeme))
+
+    def assign(self, name, value):
+        try:
+            self.values[name.lexeme] = value
+        except KeyError:
             raise RuntimeError("Undefined variable '{}'.".format(
                 name.lexeme))
 
@@ -440,7 +452,19 @@ class Parser(object):
         return self.tokens[self.current - 1]
 
     def expression(self):
-        return self.equality()
+        return self.assignment()
+
+    def assignment(self):
+        expr = self.equality()
+        if self.match(TokenType.EQUAL):
+            equals = self.previous()
+            value = self.assignment()
+            if isinstance(expr, ast.Variable):
+                name = expr.name
+                return ast.Assign(name, value)
+            else:
+                self.error(equals, "Invalid assignment target.")
+        return expr
 
     def equality(self):
         expr = self.comparison()

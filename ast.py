@@ -82,3 +82,14 @@ class Var(object):
     def accept(self, visitor):
         return visitor.visit_var(self)
 
+class Assign(object):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+    def __str__(self):
+        return "Assign"
+
+    def accept(self, visitor):
+        return visitor.visit_assign(self)
+
