@@ -34,3 +34,6 @@ while (i < 5) {
     print i;
     i = i + 1;
 }
+
+print "Beginning for loop...";
+for (var i = 0; i < 10; i = i + 1) print i;
