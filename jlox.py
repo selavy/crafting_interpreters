@@ -250,6 +250,16 @@ class Interpreter(object):
         self.environment.assign(expr.name, value)
         return value
 
+    def visit_logical(self, expr):
+        left = self.evaluate(expr.left)
+        if expr.operator.ttype == TokenType.OR:
+            if Interpreter.is_truthy(left):
+                return left
+        else:
+            if not Interpreter.is_truthy(left):
+                return left
+        return self.evaluate(expr.right)
+
 
 def lox_runtime_error(err):
     # TODO: make exception class to hold line number
@@ -454,7 +464,7 @@ class Parser(object):
         return self.assignment()
 
     def assignment(self):
-        expr = self.equality()
+        expr = self.or_()
         if self.match(TokenType.EQUAL):
             equals = self.previous()
             value = self.assignment()
@@ -463,6 +473,22 @@ class Parser(object):
                 return ast.Assign(name, value)
             else:
                 self.error(equals, "Invalid assignment target.")
+        return expr
+
+    def or_(self):
+        expr = self.and_()
+        while self.match(TokenType.OR):
+            operator = self.previous()
+            right = self.and_()
+            expr = ast.Logical(expr, operator, right)
+        return expr
+
+    def and_(self):
+        expr = self.equality()
+        while self.match(TokenType.AND):
+            operator = self.previous()
+            right = self.equality()
+            expr = ast.Logical(expr, operator, right)
         return expr
 
     def equality(self):

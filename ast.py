@@ -115,3 +115,15 @@ class If(object):
     def accept(self, visitor):
         return visitor.visit_if(self)
 
+class Logical(object):
+    def __init__(self, left, operator, right):
+        self.left = left
+        self.operator = operator
+        self.right = right
+
+    def __str__(self):
+        return "Logical"
+
+    def accept(self, visitor):
+        return visitor.visit_logical(self)
+

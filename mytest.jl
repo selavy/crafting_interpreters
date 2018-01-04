@@ -17,9 +17,14 @@ var c = "global c";
 print a;
 print b;
 print c;
-if(true)
+if(true) {
     print "hello";
+    print "This is inside a block!";
+}
 if(false)
     print "Branch 1 executed";
 else
     print "Branch 2 executed";
+
+print "hi" or 2; // "hi".
+print nil or "yes"; // "yes".
