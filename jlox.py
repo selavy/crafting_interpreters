@@ -103,6 +103,8 @@ class Interpreter(object):
                 self.execute(stmt)
         except Exception as e:
             lox_runtime_error(e)
+            # TEMP TEMP
+            raise
 
     def execute(self, stmt):
         stmt.accept(self)
@@ -114,6 +116,13 @@ class Interpreter(object):
     def visit_print(self, stmt):
         value = self.evaluate(stmt.expression)
         print(str(value))
+        return None
+
+    def visit_if(self, stmt):
+        if Interpreter.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.then_branch)
+        elif stmt.else_branch is not None:
+            self.execute(stmt.else_branch)
         return None
 
     def evaluate(self, expr):
@@ -546,8 +555,21 @@ class Parser(object):
             return self.print_statement()
         elif self.match(TokenType.LEFT_BRACE):
             return ast.Block(self.block())
+        elif self.match(TokenType.IF):
+            return self.if_statement()
         else:
             return self.expression_statement()
+
+    def if_statement(self):
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.")
+        then_branch = self.statement()
+        if self.match(TokenType.ELSE):
+            else_branch = self.statement()
+        else:
+            else_branch = None
+        return ast.If(condition, then_branch, else_branch)
 
     def is_end(self):
         return self.peek().ttype == TokenType.EOF
@@ -566,8 +588,10 @@ class Parser(object):
             else:
                 return self.statement()
         except Exception:
-            self.synchronize()
-            return None
+            # TEMP TEMP
+            raise
+            # self.synchronize()
+            # return None
 
     def var_declaration(self):
         name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")

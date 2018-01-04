@@ -17,3 +17,9 @@ var c = "global c";
 print a;
 print b;
 print c;
+if(true)
+    print "hello";
+if(false)
+    print "Branch 1 executed";
+else
+    print "Branch 2 executed";
