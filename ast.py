@@ -162,3 +162,14 @@ class Function(object):
     def accept(self, visitor):
         return visitor.visit_function(self)
 
+class Return(object):
+    def __init__(self, keyword, value):
+        self.keyword = keyword
+        self.value = value
+
+    def __str__(self):
+        return "Return"
+
+    def accept(self, visitor):
+        return visitor.visit_return(self)
+

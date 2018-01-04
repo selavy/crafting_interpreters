@@ -99,11 +99,14 @@ class LoxFunction(object):
         return len(self.declaration.parameters)
 
     def call(self, interp, args):
-        env= Environment(interp.globals)
+        env = Environment(interp._globals)
         params = self.declaration.parameters
         for param, arg in zip(params, args):
             env.define(param.lexeme, arg)
-        interp.execute_block(self.declaration.body, env)
+        try:
+            interp.execute_block(self.declaration.body, env)
+        except ReturnException as rv:
+            return rv.value
         return None
 
     def __str__(self):
@@ -122,12 +125,20 @@ class Builtin_clock(object):
         return time.clock()
 
 
+class ReturnException(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return 'ReturnException'
+
+
 class Interpreter(object):
     def __init__(self):
         self.had_error = False
-        self.globals = Environment()
-        self.environment = Environment(self.globals)
-        self.globals.define("clock", Builtin_clock())
+        self._globals = Environment(name="globals")
+        self._globals.define("clock", Builtin_clock())
+        self.environment = self._globals
 
     def interpret(self, statements):
         self.had_error = False
@@ -157,6 +168,13 @@ class Interpreter(object):
         elif stmt.else_branch is not None:
             self.execute(stmt.else_branch)
         return None
+
+    def visit_return(self, stmt):
+        if stmt.value is None:
+            value = None
+        else:
+            value = self.evaluate(stmt.value)
+        raise ReturnException(value)
 
     def evaluate(self, expr):
         return expr.accept(self)
@@ -457,9 +475,10 @@ def scan_tokens(source):
 
 # REVISIT(plesslie): does this really to be its own class?
 class Environment(object):
-    def __init__(self, enclosing=None):
+    def __init__(self, enclosing=None, name=None):
         self.values = {}
         self.enclosing = enclosing
+        self.name = name
 
     def define(self, name, value):
         self.values[name] = value
@@ -468,11 +487,12 @@ class Environment(object):
         try:
             return self.values[name.lexeme]
         except KeyError:
-            if self.enclosing is not None:
-                return self.enclosing.get(name)
-            else:
-                raise RuntimeError("Undefined variable '{}'.".format(
-                    name.lexeme))
+            pass
+        if self.enclosing is not None:
+            return self.enclosing.get(name)
+        else:
+            raise RuntimeError("Undefined variable '{}'.".format(
+                name.lexeme))
 
     def assign(self, name, value):
         if name.lexeme in self.values:
@@ -662,8 +682,19 @@ class Parser(object):
             return self.while_statement()
         elif self.match(TokenType.FOR):
             return self.for_statement()
+        elif self.match(TokenType.RETURN):
+            return self.return_statement()
         else:
             return self.expression_statement()
+
+    def return_statement(self):
+        keyword = self.previous()
+        if self.check(TokenType.SEMICOLON):
+            value = None
+        else:
+            value = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+        return ast.Return(keyword, value)
 
     def for_statement(self):
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")

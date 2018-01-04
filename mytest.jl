@@ -45,3 +45,15 @@ var zz = "Dear";
 var yy = "Reader";
 sayHi(zz, yy);
 sayHi("Dear", "Reader");
+
+//
+// Fibonacci Numbers!!
+//
+fun fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 2) + fibonacci(n - 1);
+}
+
+for (var i = 0; i < 3; i = i + 1) {
+    print fibonacci(i);
+}

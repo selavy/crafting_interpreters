@@ -44,6 +44,7 @@ if __name__ == '__main__':
             ('While', ['condition', 'body']),
             ('Call', ['callee', 'paren', 'arguments']),
             ('Function', ['name', 'parameters', 'body']),
+            ('Return', ['keyword', 'value']),
     )
     for node in nodes:
         gentype(sys.stdout, node)
