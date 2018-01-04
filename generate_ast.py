@@ -39,6 +39,7 @@ if __name__ == '__main__':
             ('Var', ['name', 'initializer']),
             ('Assign', ['name', 'value']),
             ('Block', ['statements']),
+            ('If', ['condition', 'then_branch', 'else_branch']),
     )
     for node in nodes:
         gentype(sys.stdout, node)

@@ -103,3 +103,15 @@ class Block(object):
     def accept(self, visitor):
         return visitor.visit_block(self)
 
+class If(object):
+    def __init__(self, condition, then_branch, else_branch):
+        self.condition = condition
+        self.then_branch = then_branch
+        self.else_branch = else_branch
+
+    def __str__(self):
+        return "If"
+
+    def accept(self, visitor):
+        return visitor.visit_if(self)
+
