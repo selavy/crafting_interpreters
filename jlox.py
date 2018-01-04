@@ -260,6 +260,11 @@ class Interpreter(object):
                 return left
         return self.evaluate(expr.right)
 
+    def visit_while(self, stmt):
+        while Interpreter.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.body)
+        return None
+
 
 def lox_runtime_error(err):
     # TODO: make exception class to hold line number
@@ -421,14 +426,13 @@ class Environment(object):
                     name.lexeme))
 
     def assign(self, name, value):
-        try:
+        if name.lexeme in self.values:
             self.values[name.lexeme] = value
-        except KeyError:
-            if self.enclosing is not None:
-                self.enclosing.assign(name, value)
-            else:
-                raise RuntimeError("Undefined variable '{}'.".format(
-                    name.lexeme))
+        elif self.enclosing is not None:
+            self.enclosing.assign(name, value)
+        else:
+            raise RuntimeError("Undefined variable '{}'.".format(
+                name.lexeme))
 
 
 class Parser(object):
@@ -504,7 +508,7 @@ class Parser(object):
         while self.match(TokenType.GREATER, TokenType.GREATER_EQUAL,
                 TokenType.LESS, TokenType.LESS_EQUAL):
             operator = self.previous()
-            right = addition()
+            right = self.addition()
             expr = ast.Binary(expr, operator, right)
         return expr
 
@@ -583,8 +587,17 @@ class Parser(object):
             return ast.Block(self.block())
         elif self.match(TokenType.IF):
             return self.if_statement()
+        elif self.match(TokenType.WHILE):
+            return self.while_statement()
         else:
             return self.expression_statement()
+
+    def while_statement(self):
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        body = self.statement()
+        return ast.While(condition, body)
 
     def if_statement(self):
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")

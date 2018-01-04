@@ -28,3 +28,9 @@ else
 
 print "hi" or 2; // "hi".
 print nil or "yes"; // "yes".
+
+var i = 1;
+while (i < 5) {
+    print i;
+    i = i + 1;
+}

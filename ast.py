@@ -127,3 +127,14 @@ class Logical(object):
     def accept(self, visitor):
         return visitor.visit_logical(self)
 
+class While(object):
+    def __init__(self, condition, body):
+        self.condition = condition
+        self.body = body
+
+    def __str__(self):
+        return "While"
+
+    def accept(self, visitor):
+        return visitor.visit_while(self)
+
