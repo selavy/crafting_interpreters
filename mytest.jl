@@ -37,3 +37,11 @@ while (i < 5) {
 
 print "Beginning for loop...";
 for (var i = 0; i < 10; i = i + 1) print i;
+
+fun sayHi(first, last) {
+    print "Hi, " + first + " " + last + "!";
+}
+var zz = "Dear";
+var yy = "Reader";
+sayHi(zz, yy);
+sayHi("Dear", "Reader");

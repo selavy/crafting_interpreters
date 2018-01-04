@@ -43,6 +43,7 @@ if __name__ == '__main__':
             ('Logical', ['left', 'operator', 'right']),
             ('While', ['condition', 'body']),
             ('Call', ['callee', 'paren', 'arguments']),
+            ('Function', ['name', 'parameters', 'body']),
     )
     for node in nodes:
         gentype(sys.stdout, node)

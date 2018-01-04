@@ -91,6 +91,25 @@ class Token(object):
         return self.__str__()
 
 
+class LoxFunction(object):
+    def __init__(self, declaration):
+        self.declaration = declaration
+
+    def arity(self):
+        return len(self.declaration.parameters)
+
+    def call(self, interp, args):
+        env= Environment(interp.globals)
+        params = self.declaration.parameters
+        for param, arg in zip(params, args):
+            env.define(param.lexeme, arg)
+        interp.execute_block(self.declaration.body, env)
+        return None
+
+    def __str__(self):
+        return "<fn {}>".format(self.declaration.name.lexeme)
+
+
 class Builtin_clock(object):
     def __init__(self):
         pass
@@ -289,6 +308,11 @@ class Interpreter(object):
             raise RuntimeError("Expected {} arguments but got {}.".format(
                 callee.arity(), len(arguments)))
         return callee.call(self, arguments)
+
+    def visit_function(self, stmt):
+        function = LoxFunction(stmt)
+        self.environment.define(stmt.name.lexeme, function)
+        return None
 
 
 def lox_runtime_error(err):
@@ -577,7 +601,7 @@ class Parser(object):
                 if len(arguments) >= 8:
                     self.error(self.peek(), "Cannot have more than 8 arguments.")
                 arguments.append(self.expression())
-                if self.match(TokenType.COMMA):
+                if not self.match(TokenType.COMMA):
                     break
         paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
         return ast.Call(callee, paren, arguments)
@@ -703,6 +727,8 @@ class Parser(object):
         try:
             if self.match(TokenType.VAR):
                 return self.var_declaration()
+            elif self.match(TokenType.FUN):
+                return self.function("function")
             else:
                 return self.statement()
         except Exception:
@@ -710,6 +736,25 @@ class Parser(object):
             raise
             # self.synchronize()
             # return None
+
+    def function(self, kind):
+        name = self.consume(TokenType.IDENTIFIER, "Expect {} name.".format(
+            kind))
+        parameters = []
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after {} name".format(
+            kind))
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(parameters) >= 8:
+                    self.error(self.peek(), "Cannot have mre than 8 parameters.")
+                parameters.append(self.consume(TokenType.IDENTIFIER, "Expect parameter name."))
+                if not self.match(TokenType.COMMA):
+                    break
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+        self.consume(TokenType.LEFT_BRACE, "Expect '{{' before {} body.".format(
+            kind))
+        body = self.block()
+        return ast.Function(name, parameters, body)
 
     def var_declaration(self):
         name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")

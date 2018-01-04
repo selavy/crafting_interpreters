@@ -150,3 +150,15 @@ class Call(object):
     def accept(self, visitor):
         return visitor.visit_call(self)
 
+class Function(object):
+    def __init__(self, name, parameters, body):
+        self.name = name
+        self.parameters = parameters
+        self.body = body
+
+    def __str__(self):
+        return "Function"
+
+    def accept(self, visitor):
+        return visitor.visit_function(self)
+
