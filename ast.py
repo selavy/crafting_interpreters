@@ -138,3 +138,15 @@ class While(object):
     def accept(self, visitor):
         return visitor.visit_while(self)
 
+class Call(object):
+    def __init__(self, callee, paren, arguments):
+        self.callee = callee
+        self.paren = paren
+        self.arguments = arguments
+
+    def __str__(self):
+        return "Call"
+
+    def accept(self, visitor):
+        return visitor.visit_call(self)
+

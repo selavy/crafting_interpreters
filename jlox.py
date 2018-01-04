@@ -91,10 +91,24 @@ class Token(object):
         return self.__str__()
 
 
+class Builtin_clock(object):
+    def __init__(self):
+        pass
+
+    def arity(self):
+        return 0
+
+    def call(self, interp, args):
+        import time
+        return time.clock()
+
+
 class Interpreter(object):
     def __init__(self):
         self.had_error = False
-        self.environment = Environment()
+        self.globals = Environment()
+        self.environment = Environment(self.globals)
+        self.globals.define("clock", Builtin_clock())
 
     def interpret(self, statements):
         self.had_error = False
@@ -264,6 +278,17 @@ class Interpreter(object):
         while Interpreter.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.body)
         return None
+
+    def visit_call(self, expr):
+        callee = self.evaluate(expr.callee)
+        arguments = [self.evaluate(arg) for arg in expr.arguments]
+        # # TODO(plesslie): check that callee is a callable
+        # if not isinstance(callee, XXX):
+        #     raise RuntimeError("Can only call functions and classes.")
+        if len(arguments) != callee.arity():
+            raise RuntimeError("Expected {} arguments but got {}.".format(
+                callee.arity(), len(arguments)))
+        return callee.call(self, arguments)
 
 
 def lox_runtime_error(err):
@@ -534,7 +559,29 @@ class Parser(object):
             right = self.unary()
             return ast.Unary(operator, right)
         else:
-            return self.primary()
+            return self.call()
+
+    def call(self):
+        expr = self.primary()
+        while True:
+            if self.match(TokenType.LEFT_PAREN):
+                expr = self.finish_call(expr)
+            else:
+                break
+        return expr
+
+    def finish_call(self, callee):
+        arguments = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(arguments) >= 8:
+                    self.error(self.peek(), "Cannot have more than 8 arguments.")
+                arguments.append(self.expression())
+                if self.match(TokenType.COMMA):
+                    break
+        paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+        return ast.Call(callee, paren, arguments)
+
 
     def primary(self):
         if self.match(TokenType.FALSE):
