@@ -92,14 +92,15 @@ class Token(object):
 
 
 class LoxFunction(object):
-    def __init__(self, declaration):
+    def __init__(self, declaration, closure):
         self.declaration = declaration
+        self.closure = closure
 
     def arity(self):
         return len(self.declaration.parameters)
 
     def call(self, interp, args):
-        env = Environment(interp._globals)
+        env = Environment(self.closure)
         params = self.declaration.parameters
         for param, arg in zip(params, args):
             env.define(param.lexeme, arg)
@@ -328,7 +329,7 @@ class Interpreter(object):
         return callee.call(self, arguments)
 
     def visit_function(self, stmt):
-        function = LoxFunction(stmt)
+        function = LoxFunction(stmt, self.environment)
         self.environment.define(stmt.name.lexeme, function)
         return None
 
