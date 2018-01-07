@@ -4,4 +4,8 @@ class DevonshireCream {
     }
 }
 
-print DevonshireCream;
+print DevonshireCream; // Expect: "DevonshireCream"
+
+class Bagel {}
+var bagel = Bagel();
+print bagel; // Expect: "Bagel instance"

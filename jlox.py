@@ -120,6 +120,21 @@ class LoxClass(object):
     def __str__(self):
         return self.name
 
+    def call(self, interp, args):
+        instance = LoxInstance(self)
+        return instance
+
+    def arity(self):
+        return 0
+
+
+class LoxInstance(object):
+    def __init__(self, klass):
+        self.klass = klass
+
+    def __str__(self):
+        return '{!s} instance'.format(self.klass)
+
 
 class Builtin_clock(object):
     def __init__(self):
