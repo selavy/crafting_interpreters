@@ -140,6 +140,7 @@ class Interpreter(object):
         self._globals = Environment(name="globals")
         self._globals.define("clock", Builtin_clock())
         self.environment = self._globals
+        self._locals = {}  # Expr -> Integer
 
     def interpret(self, statements):
         self.had_error = False
@@ -295,11 +296,24 @@ class Interpreter(object):
         return None
 
     def visit_variable(self, expr):
-        return self.environment.get(expr.name)
+        # return self.environment.get(expr.name)
+        return self.lookup_variable(expr.name, expr)
+
+    def lookup_variable(self, name, expr):
+        distance = self._locals.get(expr)
+        if distance is not None:
+            return self.environment.get_at(distance, name.lexeme)
+        else:
+            return self._globals.get(name)
 
     def visit_assign(self, expr):
         value = self.evaluate(expr.value)
-        self.environment.assign(expr.name, value)
+        # self.environment.assign(expr.name, value)
+        distance = self._locals.get(expr)
+        if distance is not None:
+            self.environment.assign_at(distance, expr.name, value)
+        else:
+            self._globals.assign(expr.name, value)
         return value
 
     def visit_logical(self, expr):
@@ -332,6 +346,127 @@ class Interpreter(object):
         function = LoxFunction(stmt, self.environment)
         self.environment.define(stmt.name.lexeme, function)
         return None
+
+    def resolve(self, expr, depth):
+        self._locals[expr] = depth
+
+
+class Resolver(object):
+    def __init__(self, interp):
+        self.interp = interp
+        self.scopes = []
+
+    def visit_block(self, stmt):
+        # XXX: make this a context manager?
+        self.begin_scope()
+        self.resolve(stmt.statements)
+        self.end_scope()
+
+    def resolve(self, stmt):
+        if isinstance(stmt, list):
+            for s in stmt:
+                s.accept(self)
+        else:
+            stmt.accept(self)
+
+    def begin_scope(self):
+        self.scopes.append({})
+
+    def end_scope(self):
+        self.scopes.pop()
+
+    def visit_var(self, stmt):
+        self.declare(stmt.name)
+        if stmt.initializer is not None:
+            self.resolve(stmt.initializer)
+        self.define(stmt.name)
+
+    def declare(self, name):
+        if not self.scopes:
+            return
+        self.scopes[-1][name.lexeme] = False
+
+    def define(self, name):
+        if not self.scopes:
+            return
+        self.scopes[-1][name.lexeme] = True
+
+    def visit_variable(self, expr):
+        if self.scopes:
+            try:
+                if not self.scopes[-1][expr.name.lexeme]:
+                    # XXX: what error method to call?
+                    # error(expr.name, "Cannot read local variable in its own initializer.")
+                    raise RuntimeError("Cannot read local variable in its own initializer.")
+            except KeyError:
+                pass
+        self.resolve_local(expr, expr.name)
+
+    def resolve_local(self, expr, name):
+        for i, scope in enumerate(reversed(self.scopes)):
+            if name.lexeme in scope:
+                self.interp.resolve(expr, i)
+                return
+        # Not found. Assume it is global
+
+    def visit_assign(self, expr):
+        self.resolve(expr.value)
+        self.resolve_local(expr, expr.name)
+
+    def visit_function(self, stmt):
+        self.declare(stmt.name)
+        self.define(stmt.name)
+        self.resolve_function(stmt)
+
+    def resolve_function(self, function):
+        self.begin_scope()
+        for param in function.parameters:
+            self.declare(param)
+            self.define(param)
+        self.resolve(function.body)
+        self.end_scope()
+
+    def visit_expression(self, stmt):
+        self.resolve(stmt.expression)
+
+    def visit_if(self, stmt):
+        self.resolve(stmt.condition)
+        self.resolve(stmt.then_branch)
+        if stmt.else_branch:
+            self.resolve(stmt.else_branch)
+
+    def visit_print(self, stmt):
+        self.resolve(stmt.expression)
+
+    def visit_return(self, stmt):
+        if stmt.value is not None:
+            self.resolve(stmt.value)
+
+    def visit_while(self, stmt):
+        self.resolve(stmt.condition)
+        self.resolve(stmt.body)
+
+    def visit_binary(self, expr):
+        self.resolve(expr.left)
+        self.resolve(expr.right)
+
+    def visit_call(self, expr):
+        self.resolve(expr.callee)
+        for arg in expr.arguments:
+            self.resolve(arg)
+
+    def visit_grouping(expr):
+        self.resolve(expr.expression)
+
+    def visit_literal(self, expr):
+        pass
+
+    def visit_logical(self, expr):
+        self.resolve(expr.left)
+        self.resolve(expr.right)
+
+    def visit_unary(self, expr):
+        self.resolve(expr.right)
 
 
 def lox_runtime_error(err):
@@ -474,7 +609,6 @@ def scan_tokens(source):
     return tokens
 
 
-# REVISIT(plesslie): does this really to be its own class?
 class Environment(object):
     def __init__(self, enclosing=None, name=None):
         self.values = {}
@@ -495,6 +629,15 @@ class Environment(object):
             raise RuntimeError("Undefined variable '{}'.".format(
                 name.lexeme))
 
+    def get_at(self, distance, name):
+        return self.ancestor(distance).values[name]
+
+    def ancestor(self, distance):
+        result = self
+        for i in range(distance):
+            result = result.enclosing
+        return result
+
     def assign(self, name, value):
         if name.lexeme in self.values:
             self.values[name.lexeme] = value
@@ -503,6 +646,9 @@ class Environment(object):
         else:
             raise RuntimeError("Undefined variable '{}'.".format(
                 name.lexeme))
+
+    def assign_at(self, distance, name, value):
+        self.ancestor(distance).values[name.lexeme] = value
 
 
 class Parser(object):
@@ -845,6 +991,8 @@ def run(source):
     parser = Parser(tokens)
     stmts = parser.parse()
     interp = Interpreter()
+    resolver = Resolver(interp)
+    resolver.resolve(stmts)
     interp.interpret(stmts)
 
 
