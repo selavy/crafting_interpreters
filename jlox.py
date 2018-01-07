@@ -351,10 +351,16 @@ class Interpreter(object):
         self._locals[expr] = depth
 
 
+class FunctionType(Enum):
+    NONE = auto(),
+    FUNCTION = auto(),
+
+
 class Resolver(object):
     def __init__(self, interp):
         self.interp = interp
         self.scopes = []
+        self.current_function = FunctionType.NONE
 
     def visit_block(self, stmt):
         # XXX: make this a context manager?
@@ -420,15 +426,18 @@ class Resolver(object):
     def visit_function(self, stmt):
         self.declare(stmt.name)
         self.define(stmt.name)
-        self.resolve_function(stmt)
+        self.resolve_function(stmt, FunctionType.FUNCTION)
 
-    def resolve_function(self, function):
+    def resolve_function(self, function, ftype):
+        enclosing_function = self.current_function
+        self.current_function = ftype
         self.begin_scope()
         for param in function.parameters:
             self.declare(param)
             self.define(param)
         self.resolve(function.body)
         self.end_scope()
+        self.current_function = enclosing_function
 
     def visit_expression(self, stmt):
         self.resolve(stmt.expression)
@@ -443,6 +452,9 @@ class Resolver(object):
         self.resolve(stmt.expression)
 
     def visit_return(self, stmt):
+        if self.current_function == FunctionType.NONE:
+            # XXX: error handling
+            raise ValueError("Cannot return from top-level code.")
         if stmt.value is not None:
             self.resolve(stmt.value)
 
