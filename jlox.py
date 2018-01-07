@@ -108,10 +108,17 @@ class LoxFunction(object):
             interp.execute_block(self.declaration.body, env)
         except ReturnException as rv:
             return rv.value
-        return None
 
     def __str__(self):
         return "<fn {}>".format(self.declaration.name.lexeme)
+
+
+class LoxClass(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return self.name
 
 
 class Builtin_clock(object):
@@ -157,19 +164,16 @@ class Interpreter(object):
 
     def visit_expression(self, stmt):
         self.evaluate(stmt.expression)
-        return None
 
     def visit_print(self, stmt):
         value = self.evaluate(stmt.expression)
         print(str(value))
-        return None
 
     def visit_if(self, stmt):
         if Interpreter.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.then_branch)
         elif stmt.else_branch is not None:
             self.execute(stmt.else_branch)
-        return None
 
     def visit_return(self, stmt):
         if stmt.value is None:
@@ -293,7 +297,6 @@ class Interpreter(object):
         if stmt.initializer is not None:
             value = self.evaluate(stmt.initializer)
         self.environment.define(stmt.name.lexeme, value)
-        return None
 
     def visit_variable(self, expr):
         # return self.environment.get(expr.name)
@@ -329,7 +332,6 @@ class Interpreter(object):
     def visit_while(self, stmt):
         while Interpreter.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.body)
-        return None
 
     def visit_call(self, expr):
         callee = self.evaluate(expr.callee)
@@ -345,7 +347,11 @@ class Interpreter(object):
     def visit_function(self, stmt):
         function = LoxFunction(stmt, self.environment)
         self.environment.define(stmt.name.lexeme, function)
-        return None
+
+    def visit_class(self, stmt):
+        self.environment.define(stmt.name.lexeme, None)
+        klass = LoxClass(stmt.name.lexeme)
+        self.environment.assign(stmt.name, klass)
 
     def resolve(self, expr, depth):
         self._locals[expr] = depth
@@ -380,6 +386,10 @@ class Resolver(object):
 
     def end_scope(self):
         self.scopes.pop()
+
+    def visit_class(self, stmt):
+        self.declare(stmt.name)
+        self.define(stmt.name)
 
     def visit_var(self, stmt):
         self.declare(stmt.name)
@@ -921,6 +931,8 @@ class Parser(object):
         try:
             if self.match(TokenType.VAR):
                 return self.var_declaration()
+            elif self.match(TokenType.CLASS):
+                return self.class_declaration()
             elif self.match(TokenType.FUN):
                 return self.function("function")
             else:
@@ -930,6 +942,15 @@ class Parser(object):
             raise
             # self.synchronize()
             # return None
+
+    def class_declaration(self):
+        name = self.consume(TokenType.IDENTIFIER, "Expect class name.")
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+        methods = []
+        while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
+            methods.append(self.function("method"))
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+        return ast.Class(name, methods)
 
     def function(self, kind):
         name = self.consume(TokenType.IDENTIFIER, "Expect {} name.".format(

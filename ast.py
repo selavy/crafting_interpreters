@@ -173,3 +173,14 @@ class Return(object):
     def accept(self, visitor):
         return visitor.visit_return(self)
 
+class Class(object):
+    def __init__(self, name, methods):
+        self.name = name
+        self.methods = methods
+
+    def __str__(self):
+        return "Class"
+
+    def accept(self, visitor):
+        return visitor.visit_class(self)
+
