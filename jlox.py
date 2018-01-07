@@ -384,7 +384,11 @@ class Resolver(object):
     def declare(self, name):
         if not self.scopes:
             return
-        self.scopes[-1][name.lexeme] = False
+        scope = self.scopes[-1]
+        if name.lexeme in scope:
+            # XXX: error handling function
+            raise ValueError("Variable with this name already declared in this scope.")
+        scope[name.lexeme] = False
 
     def define(self, name):
         if not self.scopes:
