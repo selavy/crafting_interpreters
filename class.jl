@@ -40,3 +40,11 @@ class Thing {
 
 var callback = Thing().getCallback();
 callback();
+
+class Foo {
+    init() {
+        print this;
+    }
+}
+
+var foo = Foo();

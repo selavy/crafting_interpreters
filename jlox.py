@@ -92,9 +92,10 @@ class Token(object):
 
 
 class LoxFunction(object):
-    def __init__(self, declaration, closure):
+    def __init__(self, declaration, closure, is_initializer):
         self.declaration = declaration
         self.closure = closure
+        self.is_initializer = is_initializer
 
     def arity(self):
         return len(self.declaration.parameters)
@@ -108,11 +109,13 @@ class LoxFunction(object):
             interp.execute_block(self.declaration.body, env)
         except ReturnException as rv:
             return rv.value
+        if self.is_initializer:
+            return self.closure.get_at(0, "this")
 
     def bind(self, instance):
         environment = Environment(self.closure)
         environment.define("this", instance)
-        return LoxFunction(self.declaration, environment)
+        return LoxFunction(self.declaration, environment, self.is_initializer)
 
     def __str__(self):
         return "<fn {}>".format(self.declaration.name.lexeme)
@@ -128,10 +131,17 @@ class LoxClass(object):
 
     def call(self, interp, args):
         instance = LoxInstance(self)
+        initializer = self.methods.get("init")
+        if initializer is not None:
+            initializer.bind(instance).call(interp, args)
         return instance
 
     def arity(self):
-        return 0
+        initializer = self.methods.get("init")
+        if initializer is not None:
+            return initializer.arity()
+        else:
+            return 0
 
     def find_method(self, instance, name):
         try:
@@ -406,14 +416,15 @@ class Interpreter(object):
         return callee.call(self, arguments)
 
     def visit_function(self, stmt):
-        function = LoxFunction(stmt, self.environment)
+        function = LoxFunction(stmt, self.environment, False)
         self.environment.define(stmt.name.lexeme, function)
 
     def visit_class(self, stmt):
         self.environment.define(stmt.name.lexeme, None)
         methods = {}
         for method in stmt.methods:
-            function = LoxFunction(method, self.environment)
+            is_init = method.name.lexeme == "init"
+            function = LoxFunction(method, self.environment, is_init)
             methods[method.name.lexeme]  = function
         klass = LoxClass(stmt.name.lexeme, methods)
         self.environment.assign(stmt.name, klass)
