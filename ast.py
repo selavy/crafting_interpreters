@@ -174,8 +174,9 @@ class Return(object):
         return visitor.visit_return(self)
 
 class Class(object):
-    def __init__(self, name, methods):
+    def __init__(self, name, superclass, methods):
         self.name = name
+        self.superclass = superclass
         self.methods = methods
 
     def __str__(self):

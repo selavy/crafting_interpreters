@@ -48,3 +48,7 @@ class Foo {
 }
 
 var foo = Foo();
+
+class Base {}
+class Derived < Base {}
+var derived = Derived();

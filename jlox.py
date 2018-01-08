@@ -122,9 +122,10 @@ class LoxFunction(object):
 
 
 class LoxClass(object):
-    def __init__(self, name, methods):
+    def __init__(self, name, superclass, methods):
         self.name = name
         self.methods = methods
+        self.superclass = superclass
 
     def __str__(self):
         return self.name
@@ -421,12 +422,18 @@ class Interpreter(object):
 
     def visit_class(self, stmt):
         self.environment.define(stmt.name.lexeme, None)
+        if stmt.superclass is not None:
+            superclass = self.evaluate(stmt.superclass)
+            if not isinstance(superclass, LoxClass):
+                raise RuntimeError("Superclass must be a class.")
+        else:
+            superclass = None
         methods = {}
         for method in stmt.methods:
             is_init = method.name.lexeme == "init"
             function = LoxFunction(method, self.environment, is_init)
             methods[method.name.lexeme]  = function
-        klass = LoxClass(stmt.name.lexeme, methods)
+        klass = LoxClass(stmt.name.lexeme, superclass, methods)
         self.environment.assign(stmt.name, klass)
 
     def resolve(self, expr, depth):
@@ -489,6 +496,8 @@ class Resolver(object):
         self.define(stmt.name)
         enclosing_class = self.current_class
         self.current_class = ClassType.CLASS
+        if stmt.superclass is not None:
+            self.resolve(stmt.superclass)
         self.begin_scope()
         self.scopes[-1]['this'] = True
         for method in stmt.methods:
@@ -1065,12 +1074,17 @@ class Parser(object):
 
     def class_declaration(self):
         name = self.consume(TokenType.IDENTIFIER, "Expect class name.")
+        if self.match(TokenType.LESS):
+            self.consume(TokenType.IDENTIFIER, "Expect superclass name.")
+            superclass = ast.Variable(self.previous())
+        else:
+            superclass = None
         self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
         methods = []
         while not self.check(TokenType.RIGHT_BRACE) and not self.is_end():
             methods.append(self.function("method"))
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
-        return ast.Class(name, methods)
+        return ast.Class(name, superclass, methods)
 
     def function(self, kind):
         name = self.consume(TokenType.IDENTIFIER, "Expect {} name.".format(

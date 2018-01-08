@@ -45,7 +45,7 @@ if __name__ == '__main__':
             ('Call', ['callee', 'paren', 'arguments']),
             ('Function', ['name', 'parameters', 'body']),
             ('Return', ['keyword', 'value']),
-            ('Class', ['name', 'methods']),
+            ('Class', ['name', 'superclass', 'methods']),
             ('Get', ['object', 'name']),
             ('Set', ['object', 'name', 'value']),
             ('This', ['keyword']),
