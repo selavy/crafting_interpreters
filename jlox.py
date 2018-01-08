@@ -428,11 +428,17 @@ class FunctionType(Enum):
     METHOD = auto(),
 
 
+class ClassType(Enum):
+    NONE = auto(),
+    CLASS = auto(),
+
+
 class Resolver(object):
     def __init__(self, interp):
         self.interp = interp
         self.scopes = []
         self.current_function = FunctionType.NONE
+        self.current_class = ClassType.NONE
 
     def resolve(self, stmt):
         if isinstance(stmt, list):
@@ -461,17 +467,23 @@ class Resolver(object):
         self.resolve(expr.object)
 
     def visit_this(self, expr):
+        if self.current_class == ClassType.NONE:
+            # XXX: error handling
+            raise RuntimeError("Cannot use 'this' outside of a class.")
         self.resolve_local(expr, expr.keyword)
 
     def visit_class(self, stmt):
         self.declare(stmt.name)
         self.define(stmt.name)
+        enclosing_class = self.current_class
+        self.current_class = ClassType.CLASS
         self.begin_scope()
         self.scopes[-1]['this'] = True
         for method in stmt.methods:
             decl = FunctionType.METHOD
             self.resolve_function(method, decl)
         self.end_scope()
+        self.current_class = enclosing_class
 
     def visit_var(self, stmt):
         self.declare(stmt.name)
