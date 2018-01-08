@@ -469,6 +469,7 @@ class FunctionType(Enum):
 class ClassType(Enum):
     NONE = auto(),
     CLASS = auto(),
+    SUBCLASS = auto(),
 
 
 class Resolver(object):
@@ -514,11 +515,13 @@ class Resolver(object):
         self.declare(stmt.name)
         self.define(stmt.name)
         enclosing_class = self.current_class
-        self.current_class = ClassType.CLASS
         if stmt.superclass is not None:
+            self.current_class = ClassType.SUBCLASS
             self.resolve(stmt.superclass)
             self.begin_scope()
             self.scopes[-1]['super'] = True
+        else:
+            self.current_class = ClassType.CLASS
         self.begin_scope()
         self.scopes[-1]['this'] = True
         for method in stmt.methods:
@@ -533,7 +536,14 @@ class Resolver(object):
         self.current_class = enclosing_class
 
     def visit_super(self, expr):
-        self.resolve_local(expr, expr.keyword)
+        if self.current_class == ClassType.NONE:
+            # XXX: error handling
+            raise RuntimeError("Cannot use 'super' outside of a class.")
+        elif self.current_class != ClassType.SUBCLASS:
+            # XXX: error handling
+            raise RuntimeError("Cannot use 'super' in a class with no superclass.")
+        else:
+            self.resolve_local(expr, expr.keyword)
 
     def visit_var(self, stmt):
         self.declare(stmt.name)
