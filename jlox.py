@@ -436,6 +436,7 @@ class Interpreter(object):
 class FunctionType(Enum):
     NONE = auto(),
     FUNCTION = auto(),
+    INITIALIZER = auto(),
     METHOD = auto(),
 
 
@@ -491,7 +492,10 @@ class Resolver(object):
         self.begin_scope()
         self.scopes[-1]['this'] = True
         for method in stmt.methods:
-            decl = FunctionType.METHOD
+            if method.name.lexeme == "init":
+                decl = FunctionType.INITIALIZER
+            else:
+                decl = FunctionType.METHOD
             self.resolve_function(method, decl)
         self.end_scope()
         self.current_class = enclosing_class
@@ -569,8 +573,11 @@ class Resolver(object):
     def visit_return(self, stmt):
         if self.current_function == FunctionType.NONE:
             # XXX: error handling
-            raise ValueError("Cannot return from top-level code.")
+            raise RuntimeError("Cannot return from top-level code.")
         if stmt.value is not None:
+            if self.current_function == FunctionType.INITIALIZER:
+                # XXX: error handling
+                raise RuntimeError("Cannot return a value from an initializer.")
             self.resolve(stmt.value)
 
     def visit_while(self, stmt):
