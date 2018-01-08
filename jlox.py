@@ -109,13 +109,19 @@ class LoxFunction(object):
         except ReturnException as rv:
             return rv.value
 
+    def bind(self, instance):
+        environment = Environment(self.closure)
+        environment.define("this", instance)
+        return LoxFunction(self.declaration, environment)
+
     def __str__(self):
         return "<fn {}>".format(self.declaration.name.lexeme)
 
 
 class LoxClass(object):
-    def __init__(self, name):
+    def __init__(self, name, methods):
         self.name = name
+        self.methods = methods
 
     def __str__(self):
         return self.name
@@ -127,6 +133,12 @@ class LoxClass(object):
     def arity(self):
         return 0
 
+    def find_method(self, instance, name):
+        try:
+            return self.methods[name].bind(instance)
+        except KeyError:
+            return None
+
 
 class LoxInstance(object):
     def __init__(self, klass):
@@ -137,12 +149,15 @@ class LoxInstance(object):
         return '{!s} instance'.format(self.klass)
 
     def get(self, name):
-        try:
+        if name.lexeme in self.fields:
             return self.fields[name.lexeme]
-        except KeyError:
+        method = self.klass.find_method(self, name.lexeme)
+        if method is not None:
+            return method
+        else:
             # XXX: error handling
             raise RuntimeError("Undefined property '{}'.".format(
-                name))
+                name.lexeme))
 
     def set(self, name, value):
         self.fields[name.lexeme] = value
@@ -195,6 +210,9 @@ class Interpreter(object):
     def visit_print(self, stmt):
         value = self.evaluate(stmt.expression)
         print(str(value))
+
+    def visit_this(self, expr):
+        return self.lookup_variable(expr.keyword, expr)
 
     def visit_get(self, expr):
         object = self.evaluate(expr.object)
@@ -393,7 +411,11 @@ class Interpreter(object):
 
     def visit_class(self, stmt):
         self.environment.define(stmt.name.lexeme, None)
-        klass = LoxClass(stmt.name.lexeme)
+        methods = {}
+        for method in stmt.methods:
+            function = LoxFunction(method, self.environment)
+            methods[method.name.lexeme]  = function
+        klass = LoxClass(stmt.name.lexeme, methods)
         self.environment.assign(stmt.name, klass)
 
     def resolve(self, expr, depth):
@@ -403,6 +425,7 @@ class Interpreter(object):
 class FunctionType(Enum):
     NONE = auto(),
     FUNCTION = auto(),
+    METHOD = auto(),
 
 
 class Resolver(object):
@@ -410,19 +433,6 @@ class Resolver(object):
         self.interp = interp
         self.scopes = []
         self.current_function = FunctionType.NONE
-
-    def visit_block(self, stmt):
-        # XXX: make this a context manager?
-        self.begin_scope()
-        self.resolve(stmt.statements)
-        self.end_scope()
-
-    def visit_get(self, expr):
-        self.resolve(expr.object)
-
-    def visit_set(self, expr):
-        self.resolve(expr.value)
-        self.resolve(expr.object)
 
     def resolve(self, stmt):
         if isinstance(stmt, list):
@@ -437,9 +447,31 @@ class Resolver(object):
     def end_scope(self):
         self.scopes.pop()
 
+    def visit_block(self, stmt):
+        # XXX: make this a context manager?
+        self.begin_scope()
+        self.resolve(stmt.statements)
+        self.end_scope()
+
+    def visit_get(self, expr):
+        self.resolve(expr.object)
+
+    def visit_set(self, expr):
+        self.resolve(expr.value)
+        self.resolve(expr.object)
+
+    def visit_this(self, expr):
+        self.resolve_local(expr, expr.keyword)
+
     def visit_class(self, stmt):
         self.declare(stmt.name)
         self.define(stmt.name)
+        self.begin_scope()
+        self.scopes[-1]['this'] = True
+        for method in stmt.methods:
+            decl = FunctionType.METHOD
+            self.resolve_function(method, decl)
+        self.end_scope()
 
     def visit_var(self, stmt):
         self.declare(stmt.name)
@@ -871,6 +903,8 @@ class Parser(object):
             return ast.Grouping(expr)
         elif self.match(TokenType.IDENTIFIER):
             return ast.Variable(self.previous())
+        elif self.match(TokenType.THIS):
+            return ast.This(self.previous())
         else:
             self.error(self.peek(), "Expect expression.")
 

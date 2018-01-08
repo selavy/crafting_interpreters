@@ -207,3 +207,13 @@ class Set(object):
     def accept(self, visitor):
         return visitor.visit_set(self)
 
+class This(object):
+    def __init__(self, keyword):
+        self.keyword = keyword
+
+    def __str__(self):
+        return "This"
+
+    def accept(self, visitor):
+        return visitor.visit_this(self)
+

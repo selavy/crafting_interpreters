@@ -14,3 +14,29 @@ class C {}
 var c = C();
 c.field = "Hello, World!";
 print c.field;
+
+class Bacon { eat() { print "Crunch crunch crunch!"; } }
+Bacon().eat(); // Prints "Crunch crunch crunch!".
+
+class Cake {
+    taste() {
+        var adj = "declicous";
+        print "The " + this.flavor + " cake is " + adj + "!";
+    }
+}
+
+var cake = Cake();
+cake.flavor = "German chocolate";
+cake.taste(); // Prints "The German chocolate cake is declicious!".
+
+class Thing {
+    getCallback() {
+        fun localFunction() {
+            print this;
+        }
+        return localFunction;
+    }
+}
+
+var callback = Thing().getCallback();
+callback();
