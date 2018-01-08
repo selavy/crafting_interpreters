@@ -52,3 +52,11 @@ var foo = Foo();
 class Base {}
 class Derived < Base {}
 var derived = Derived();
+
+class Doughnut {
+    cook() {
+        print "Fry until golden brown.";
+    }
+}
+class BostonCream < Doughnut {}
+BostonCream().cook();

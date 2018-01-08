@@ -148,7 +148,10 @@ class LoxClass(object):
         try:
             return self.methods[name].bind(instance)
         except KeyError:
-            return None
+            if self.superclass is not None:
+                return self.superclass.find_method(instance, name)
+            else:
+                return None
 
 
 class LoxInstance(object):
