@@ -46,6 +46,8 @@ if __name__ == '__main__':
             ('Function', ['name', 'parameters', 'body']),
             ('Return', ['keyword', 'value']),
             ('Class', ['name', 'methods']),
+            ('Get', ['object', 'name']),
+            ('Set', ['object', 'name', 'value']),
     )
     for node in nodes:
         gentype(sys.stdout, node)

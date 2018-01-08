@@ -131,9 +131,21 @@ class LoxClass(object):
 class LoxInstance(object):
     def __init__(self, klass):
         self.klass = klass
+        self.fields = {}
 
     def __str__(self):
         return '{!s} instance'.format(self.klass)
+
+    def get(self, name):
+        try:
+            return self.fields[name.lexeme]
+        except KeyError:
+            # XXX: error handling
+            raise RuntimeError("Undefined property '{}'.".format(
+                name))
+
+    def set(self, name, value):
+        self.fields[name.lexeme] = value
 
 
 class Builtin_clock(object):
@@ -183,6 +195,22 @@ class Interpreter(object):
     def visit_print(self, stmt):
         value = self.evaluate(stmt.expression)
         print(str(value))
+
+    def visit_get(self, expr):
+        object = self.evaluate(expr.object)
+        if not isinstance(object, LoxInstance):
+            # XXX: error handling
+            raise RuntimeError("Only instances have properties.")
+        return object.get(expr.name)
+
+    def visit_set(self, expr):
+        object = self.evaluate(expr.object)
+        if not isinstance(object, LoxInstance):
+            # XXX: error handling
+            raise RuntimeError("Only instances have fields.")
+        value = self.evaluate(expr.value)
+        object.set(expr.name, value)
+        return value
 
     def visit_if(self, stmt):
         if Interpreter.is_truthy(self.evaluate(stmt.condition)):
@@ -388,6 +416,13 @@ class Resolver(object):
         self.begin_scope()
         self.resolve(stmt.statements)
         self.end_scope()
+
+    def visit_get(self, expr):
+        self.resolve(expr.object)
+
+    def visit_set(self, expr):
+        self.resolve(expr.value)
+        self.resolve(expr.object)
 
     def resolve(self, stmt):
         if isinstance(stmt, list):
@@ -732,6 +767,8 @@ class Parser(object):
             if isinstance(expr, ast.Variable):
                 name = expr.name
                 return ast.Assign(name, value)
+            elif isinstance(expr, ast.Get):
+                return ast.Set(expr.object, expr.name, value)
             else:
                 self.error(equals, "Invalid assignment target.")
         return expr
@@ -798,6 +835,10 @@ class Parser(object):
         while True:
             if self.match(TokenType.LEFT_PAREN):
                 expr = self.finish_call(expr)
+            elif self.match(TokenType.DOT):
+                name = self.consume(TokenType.IDENTIFIER,
+                        "Expect property name after '.'.")
+                expr = ast.Get(expr, name)
             else:
                 break
         return expr

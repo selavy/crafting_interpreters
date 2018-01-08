@@ -184,3 +184,26 @@ class Class(object):
     def accept(self, visitor):
         return visitor.visit_class(self)
 
+class Get(object):
+    def __init__(self, object, name):
+        self.object = object
+        self.name = name
+
+    def __str__(self):
+        return "Get"
+
+    def accept(self, visitor):
+        return visitor.visit_get(self)
+
+class Set(object):
+    def __init__(self, object, name, value):
+        self.object = object
+        self.name = name
+        self.value = value
+
+    def __str__(self):
+        return "Set"
+
+    def accept(self, visitor):
+        return visitor.visit_set(self)
+
