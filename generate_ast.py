@@ -49,6 +49,7 @@ if __name__ == '__main__':
             ('Get', ['object', 'name']),
             ('Set', ['object', 'name', 'value']),
             ('This', ['keyword']),
+            ('Super', ['keyword', 'method']),
     )
     for node in nodes:
         gentype(sys.stdout, node)

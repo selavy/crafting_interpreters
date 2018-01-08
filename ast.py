@@ -218,3 +218,14 @@ class This(object):
     def accept(self, visitor):
         return visitor.visit_this(self)
 
+class Super(object):
+    def __init__(self, keyword, method):
+        self.keyword = keyword
+        self.method = method
+
+    def __str__(self):
+        return "Super"
+
+    def accept(self, visitor):
+        return visitor.visit_super(self)
+

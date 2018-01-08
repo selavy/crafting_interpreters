@@ -235,6 +235,18 @@ class Interpreter(object):
             raise RuntimeError("Only instances have properties.")
         return object.get(expr.name)
 
+    def visit_super(self, expr):
+        distance = self._locals.get(expr)
+        superclass = self.environment.get_at(distance, "super")
+        # "this" is always one level nearer than "super"'s environment
+        object = self.environment.get_at(distance - 1, "this")
+        method = superclass.find_method(object, expr.method.lexeme)
+        if method is None:
+            # XXX: error handling
+            raise RuntimeError("Undefined property '{}'.".format(
+                expr.method.lexeme))
+        return method
+
     def visit_set(self, expr):
         object = self.evaluate(expr.object)
         if not isinstance(object, LoxInstance):
@@ -429,6 +441,8 @@ class Interpreter(object):
             superclass = self.evaluate(stmt.superclass)
             if not isinstance(superclass, LoxClass):
                 raise RuntimeError("Superclass must be a class.")
+            self.environment = Environment(self.environment)
+            self.environment.define("super", superclass)
         else:
             superclass = None
         methods = {}
@@ -437,6 +451,8 @@ class Interpreter(object):
             function = LoxFunction(method, self.environment, is_init)
             methods[method.name.lexeme]  = function
         klass = LoxClass(stmt.name.lexeme, superclass, methods)
+        if superclass is not None:
+            self.environment = self.environment.enclosing
         self.environment.assign(stmt.name, klass)
 
     def resolve(self, expr, depth):
@@ -501,6 +517,8 @@ class Resolver(object):
         self.current_class = ClassType.CLASS
         if stmt.superclass is not None:
             self.resolve(stmt.superclass)
+            self.begin_scope()
+            self.scopes[-1]['super'] = True
         self.begin_scope()
         self.scopes[-1]['this'] = True
         for method in stmt.methods:
@@ -510,7 +528,12 @@ class Resolver(object):
                 decl = FunctionType.METHOD
             self.resolve_function(method, decl)
         self.end_scope()
+        if stmt.superclass is not None:
+            self.end_scope()
         self.current_class = enclosing_class
+
+    def visit_super(self, expr):
+        self.resolve_local(expr, expr.keyword)
 
     def visit_var(self, stmt):
         self.declare(stmt.name)
@@ -947,6 +970,12 @@ class Parser(object):
             return ast.Variable(self.previous())
         elif self.match(TokenType.THIS):
             return ast.This(self.previous())
+        elif self.match(TokenType.SUPER):
+            keyword = self.previous()
+            self.consume(TokenType.DOT, "Expect '.' after 'super'.")
+            method = self.consume(TokenType.IDENTIFIER,
+                    "Expect superclass method name.")
+            return ast.Super(keyword, method)
         else:
             self.error(self.peek(), "Expect expression.")
 
